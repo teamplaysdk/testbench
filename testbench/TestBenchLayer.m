@@ -41,9 +41,8 @@ NSString *trackedObjectId2 = @"touchdowns";                 // You'll want to pu
 
 - (void) authenticate
 {
-    TeamPlay *tp = [TeamPlay sharedTeamPlay];
-//    [tp withLogger:self];
-    [tp startSessionWithKey:apikey withSecret:apisecret authenticate:YES handleDisconnected:YES callback:^(int status, id result){
+    [self tp_log:@"Authenticate"];
+    [[TeamPlay sharedTeamPlay] startSessionWithKey:apikey withSecret:apisecret authenticate:YES handleDisconnected:YES callback:^(int status, id result){
         switch (status) {
             case 200:
                 // Authenticated
@@ -201,26 +200,35 @@ NSString *trackedObjectId2 = @"touchdowns";                 // You'll want to pu
 
 - (void) invokePicker
 {
-    [self tp_log:@"Team picker"];
-    [[CCDirector sharedDirector] pause];
-    [[TeamPlay sharedTeamPlay] invokePicker:^(int status, id result) {
-        [[CCDirector sharedDirector] resume];
-    }];
+    TeamPlay *tp = [TeamPlay sharedTeamPlay];
+    if (![tp isAuthenticated]) {
+        [self authenticate];
+    } else {
+        [self tp_log:@"Team picker"];
+        [[CCDirector sharedDirector] pause];
+        [tp invokePicker:^(int status, id result) {
+            [[CCDirector sharedDirector] resume];
+        }];
+    }
 }
 
 - (void) recordPoints:(int)points
 {
-    [self tp_log:@"Record points"];
-    NSNumber *value = [[NSNumber alloc] initWithInt:points];
-    [[TeamPlay sharedTeamPlay] recordScore:value againstField:trackedObjectId1 callback:^(int status, id results){}];
+    if ([[TeamPlay sharedTeamPlay] isAuthenticated]) {
+        [self tp_log:@"Record points"];
+        NSNumber *value = [[NSNumber alloc] initWithInt:points];
+        [[TeamPlay sharedTeamPlay] recordScore:value againstField:trackedObjectId1 callback:^(int status, id results){}];
+    }
 }
 
 - (void) recordPoints:(int)points andTouchdowns:(int)touchdowns
 {
-    [self tp_log:@"Record points and touchdowns"];
-    NSNumber *npoints = [[NSNumber alloc] initWithInt:points];
-    NSNumber *ntouchdowns = [[NSNumber alloc] initWithInt:touchdowns];
-    [[TeamPlay sharedTeamPlay] recordScores:^(int status, id results){}, npoints, trackedObjectId1, ntouchdowns, trackedObjectId2, nil ];
+    if ([[TeamPlay sharedTeamPlay] isAuthenticated]) {
+        [self tp_log:@"Record points and touchdowns"];
+        NSNumber *npoints = [[NSNumber alloc] initWithInt:points];
+        NSNumber *ntouchdowns = [[NSNumber alloc] initWithInt:touchdowns];
+        [[TeamPlay sharedTeamPlay] recordScores:^(int status, id results){}, npoints, trackedObjectId1, ntouchdowns, trackedObjectId2, nil ];
+    }
 }
 
 
@@ -230,11 +238,15 @@ NSString *trackedObjectId2 = @"touchdowns";                 // You'll want to pu
 
 - (void) invokeResults
 {
-    [self tp_log:@"Stats"];
-    [[CCDirector sharedDirector] pause];
-    [[TeamPlay sharedTeamPlay] invokeResults:^(int status, id result) {
-        [[CCDirector sharedDirector] resume];
-    }];
+    if (![[TeamPlay sharedTeamPlay] isAuthenticated]) {
+        [self authenticate];
+    } else {
+        [self tp_log:@"Stats"];
+        [[CCDirector sharedDirector] pause];
+        [[TeamPlay sharedTeamPlay] invokeResults:^(int status, id result) {
+            [[CCDirector sharedDirector] resume];
+        }];
+    }
 }
 
 - (void) invokeLogout
@@ -282,9 +294,7 @@ NSString *trackedObjectId2 = @"touchdowns";                 // You'll want to pu
         CCLabelTTF *r = [self.rows objectAtIndex:i];
         r.position = ccp(r.position.x, r.position.y + 3.0f);
     }
-
 }
-
 
 - (void) dealloc
 {
